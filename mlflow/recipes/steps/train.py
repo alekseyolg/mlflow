@@ -458,13 +458,9 @@ class TrainStep(BaseStep):
                 f"{self.predict_prefix}label",
                 f"{self.predict_prefix}score",
             }.issubset(prediction_result.columns):
-                prediction_result_for_error = (
-                    prediction_result.drop(
-                        [f"{self.predict_prefix}label", f"{self.predict_prefix}score"], axis=1
-                    )
-                    .iloc[0:]
-                    .values
-                )
+                prediction_result_for_error = prediction_result[
+                    f"{self.predict_prefix}score_{self.positive_class}"
+                ].values
                 prediction_result = prediction_result[f"{self.predict_prefix}label"].values
             else:
                 prediction_result_for_error = prediction_result
@@ -485,19 +481,17 @@ class TrainStep(BaseStep):
                 f"{self.predict_prefix}label",
                 f"{self.predict_prefix}score",
             }.issubset(train_predictions.columns):
-                train_predicted_result = model.predict(raw_train_df.drop(self.target_col, axis=1))
-                train_predicted_probs = train_predicted_result.drop(
-                    [f"{self.predict_prefix}label", f"{self.predict_prefix}score"], axis=1
-                )
                 predicted_training_data = raw_train_df.assign(
                     predicted_data=train_predictions[f"{self.predict_prefix}label"],
-                    predicted_probability=train_predicted_probs.iloc[0:, 0].values,
+                    predicted_score=train_predictions[f"{self.predict_prefix}score"].values,
                 )
                 worst_examples_df = BaseStep._generate_worst_examples_dataframe(
                     raw_train_df,
-                    train_predicted_probs.iloc[0:, 0].values,
+                    train_predictions[f"{self.predict_prefix}label"].values,
                     error_fn(
-                        train_predicted_probs.values,
+                        train_predictions[
+                            f"{self.predict_prefix}score_{self.positive_class}"
+                        ].values,
                         raw_train_df[self.target_col].to_numpy(),
                     ),
                     self.target_col,
